@@ -14,3 +14,13 @@ def sigmoid(z):
 def sigmoid_prime(z):
     """Derivative of the sigmoid function."""
     return sigmoid(z)*(1-sigmoid(z))
+
+
+def one_hot_encode(vec, vals=10):
+    '''
+    For use to one-hot encode the 10- possible labels
+    '''
+    n = len(vec)
+    out = np.zeros((n, vals))
+    out[range(n), vec] = 1
+    return out

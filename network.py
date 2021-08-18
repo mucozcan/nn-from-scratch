@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 
-from functions import sigmoid, sigmoid_prime
+from utils import sigmoid, sigmoid_prime
 
 class Network(object):
     def __init__(self, layers):
@@ -17,7 +17,8 @@ class Network(object):
         self.num_layers = len(layers)
         self.layers = layers
         self.biases = [np.random.randn(layer,1) for layer in layers[1:]] # bias initalization. We skipped input layer.
-        self.weights = [np.random.randn(y,x) for x, y in zip(layers[:-1], layers[1:])] # weights initialization
+        self.weights = [np.random.randn(x,y) for x, y in zip(layers[:-1], layers[1:])] # weights initialization
+        print(self.weights[0].shape)
 
     def feedforward(self, x):
         """Return the output of network
@@ -31,7 +32,7 @@ class Network(object):
 
         return x
 
-    def SGD(self, train_data, epochs, batch_size, lr, test_data=None):
+    def SGD(self, dataset, epochs, batch_size, lr, test_data=None):
         """Stochastic Gradient Descent. 
 
         Args:
@@ -41,16 +42,14 @@ class Network(object):
             lr (float): learning rate.
             test_data (list, optional): Data for evaluation. Defaults to None.
         """
-        n_test = len(test_data) if test_data else None
-        n_train = len(train_data)
+        n_test = len(test_data) if test_data is not None else None
+        n_train = len(dataset.train_data)
 
         for epoch in range(epochs):
-            random.shuffle(train_data)
-            batches = [
-                train_data[k : k + batch_size] for k in range(0, n_train, batch_size)
-            ]
-            for batch in batches:
-                self.update(batch, lr)
+            
+            batch = dataset.next_batch(batch_size)
+            
+            self.update(batch, lr)
             
             if test_data:
                 print(f"Epoch {epoch}: {self.evaluate(test_data)} / {n_test}")
@@ -62,16 +61,16 @@ class Network(object):
             backpropagation to single batch.
 
         Args:
-            batch (tuple): (input, label)
+            batch (list): [input, label]
             lr (float): learning rate
         """
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
-
-        for x, y in batch:
-            delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-            nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        print(nabla_b[0].shape, nabla_w[0].shape)
+        x,y =  batch
+        delta_nabla_b, delta_nabla_w = self.backprop(x, y)
+        nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+        nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
 
         #http://neuralnetworksanddeeplearning.com/chap1.html Equations: 20 and 21
         self.weights = [
@@ -93,12 +92,12 @@ class Network(object):
         nabla_w = [np.zeros(w.shape) for w in self.weights]
 
         # forward pass
-        activation = x
+        activation = x.transpose()
         activations = [x] # list to store all the activations, layer by layer
         zs = [] # list to store all z vectors, layer by layer
 
         for b, w in zip(self.biases, self.weights):
-            z = np.dot(w, activation) + b
+            z = np.dot(w.transpose(), activation) + b ## TODO Fix shape align issue
             zs.append(z)
             activation = sigmoid(z)
             activations.append(activation)
@@ -111,7 +110,7 @@ class Network(object):
         for layer in range(2, self.num_layers):
             z = zs[-layer]
             sp = sigmoid_prime(z)
-            delta = np.dot(self.weights[-layer+1].transpose(), delta) * sp
+            delta = np.dot(self.weights[-layer+1], delta) * sp
             nabla_b[-layer] = delta
             nabla_w[-layer] = np.dot(delta, activations[-layer+1].transpose())
 
