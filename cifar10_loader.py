@@ -34,7 +34,6 @@ class CIFAR10():
             batch[b"labels"] for batch in train
         ]), 10)
         print("Train data is loaded.")
-
         test = []
         for file in os.listdir(self.test_dir):
             with open(os.path.join(self.test_dir, file), 'rb') as fo:
@@ -49,17 +48,18 @@ class CIFAR10():
             batch[b"labels"] for batch in test
         ]), 10)
 
-        if flatten:
-            self.train_data = self.train_data.flatten().reshape(train_len, 3072)
-            self.test_data = self.test_data.flatten().reshape(test_len, 3072)
-        
         print("Test data is loaded.")
 
+        if flatten:
+            self.train_data = self.train_data.flatten().reshape(train_len, 3072)
+            self.test_data = self.test_data.flatten().reshape(test_len, 3072, 1)
+
+            self.test_data = [self.test_data, self.test_labels]
+            
     def next_batch(self, batch_size):
         x = self.train_data[self.batch_iterator : self.batch_iterator + batch_size]
         y = self.train_labels[self.batch_iterator : self.batch_iterator + batch_size]
         self.batch_iterator = (self.batch_iterator + batch_size) % len(self.train_data)
-
         return x, y
 
 

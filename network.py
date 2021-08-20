@@ -18,7 +18,6 @@ class Network(object):
         self.layers = layers
         self.biases = [np.random.randn(layer,1) for layer in layers[1:]] # bias initalization. We skipped input layer.
         self.weights = [np.random.randn(x,y) for x, y in zip(layers[:-1], layers[1:])] # weights initialization
-        print(self.weights[0].shape)
 
     def feedforward(self, x):
         """Return the output of network
@@ -28,7 +27,7 @@ class Network(object):
         """
 
         for b, w in zip(self.biases, self.weights):
-            x = sigmoid(np.dot(w, x) + b)
+            x = sigmoid(np.dot(w.transpose(), x) + b)
 
         return x
 
@@ -42,16 +41,15 @@ class Network(object):
             lr (float): learning rate.
             test_data (list, optional): Data for evaluation. Defaults to None.
         """
-        n_test = len(test_data) if test_data is not None else None
+        n_test = len(test_data[0]) if test_data is not None else None
         n_train = len(dataset.train_data)
 
         for epoch in range(epochs):
             
             batch = dataset.next_batch(batch_size)
-            
             self.update(batch, lr)
             
-            if test_data:
+            if test_data is not None:
                 print(f"Epoch {epoch}: {self.evaluate(test_data)} / {n_test}")
             else:
                 print(f"Epoch {epoch} complete")
@@ -66,11 +64,14 @@ class Network(object):
         """
         nabla_b = [np.zeros(b.shape) for b in self.biases]
         nabla_w = [np.zeros(w.shape) for w in self.weights]
-        print(nabla_b[0].shape, nabla_w[0].shape)
-        x,y =  batch
-        delta_nabla_b, delta_nabla_w = self.backprop(x, y)
-        nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
-        nabla_w = [nw+dnw for nw, dnw in zip(nabla_w, delta_nabla_w)]
+        
+        x, y = batch
+        for input, label in zip(x, y):
+            input = np.expand_dims(input, axis=1)
+            label = np.expand_dims(label, axis=1)
+            delta_nabla_b, delta_nabla_w = self.backprop(input, label)
+            nabla_b = [nb+dnb for nb, dnb in zip(nabla_b, delta_nabla_b)]
+            nabla_w = [nw+dnw.transpose() for nw, dnw in zip(nabla_w, delta_nabla_w)]
 
         #http://neuralnetworksanddeeplearning.com/chap1.html Equations: 20 and 21
         self.weights = [
@@ -92,7 +93,7 @@ class Network(object):
         nabla_w = [np.zeros(w.shape) for w in self.weights]
 
         # forward pass
-        activation = x.transpose()
+        activation = x
         activations = [x] # list to store all the activations, layer by layer
         zs = [] # list to store all z vectors, layer by layer
 
@@ -112,7 +113,7 @@ class Network(object):
             sp = sigmoid_prime(z)
             delta = np.dot(self.weights[-layer+1], delta) * sp
             nabla_b[-layer] = delta
-            nabla_w[-layer] = np.dot(delta, activations[-layer+1].transpose())
+            nabla_w[-layer] = np.dot(delta, activations[-layer-1].transpose())
 
         return (nabla_b, nabla_w)
 
@@ -121,9 +122,10 @@ class Network(object):
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
+
         test_results = [(np.argmax(self.feedforward(x)), y)
-                        for (x, y) in test_data]
-        return sum(int(x == y) for (x, y) in test_results)
+                        for x, y in zip(test_data[0], test_data[1])]
+        return sum(int(x == np.where(y == 1)) for (x, y) in test_results)
 
     def cost_derivative(self, output_activations, y):
         """Returns the vector of partial derivatives of MSE loss. 
@@ -132,6 +134,7 @@ class Network(object):
             output_activations (list)
             y (int): ground truth
         """
+        print(output_activations - y)
         return (output_activations - y) # see  https://datascience.stackexchange.com/a/52159
 
 
