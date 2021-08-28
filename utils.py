@@ -1,4 +1,8 @@
 import numpy as np
+import json
+import sys
+
+
 
 def sigmoid(z):
     """Sigmoid Function
@@ -24,3 +28,19 @@ def one_hot_encode(vec, vals=10):
     out = np.zeros((n, vals))
     out[range(n), vec] = 1
     return out
+
+
+def save_model(model, filename):
+
+    data = {
+        "layers" : model.layers,
+        "weights" : [w.tolist() for w in model.weights],
+        "biases" :  [b.tolist() for b in model.biases],
+        "loss" : str(model.loss.__name__)
+    }
+
+    with open(filename, "w") as f:
+        json.dump(data, f)
+
+
+
